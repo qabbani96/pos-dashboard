@@ -1,13 +1,23 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 import type { LoginResponse, Role } from '../types'
 
-interface AuthUser { username: string; role: Role; token: string }
+interface AuthUser {
+  username: string
+  role: Role
+  token: string
+  fullName: string | null
+  userId: number
+  branchId: number | null
+}
 
 interface AuthContextValue {
   user: AuthUser | null
   setSession: (data: LoginResponse) => void
   clearSession: () => void
   isAdmin: boolean
+  isAdminBranches: boolean
+  isReception: boolean
+  isCallCenter: boolean
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -25,7 +35,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(loadUser)
 
   const setSession = useCallback((data: LoginResponse) => {
-    const authUser: AuthUser = { username: data.username, role: data.role, token: data.token }
+    const authUser: AuthUser = {
+      username: data.username ?? (data as any).username,
+      role: data.role,
+      token: data.token,
+      fullName: data.fullName ?? null,
+      userId: data.userId,
+      branchId: data.branchId ?? null,
+    }
     localStorage.setItem('token', data.token)
     localStorage.setItem('user', JSON.stringify(authUser))
     setUser(authUser)
@@ -38,7 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, setSession, clearSession, isAdmin: user?.role === 'ADMIN' }}>
+    <AuthContext.Provider value={{
+      user,
+      setSession,
+      clearSession,
+      isAdmin:         user?.role === 'ADMIN',
+      isAdminBranches: user?.role === 'ADMIN_BRANCHES',
+      isReception:     user?.role === 'RECEPTION',
+      isCallCenter:    user?.role === 'CALL_CENTER',
+    }}>
       {children}
     </AuthContext.Provider>
   )

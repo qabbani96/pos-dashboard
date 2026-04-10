@@ -3,10 +3,22 @@ import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { login } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
+import type { Role } from '../types'
 import toast from 'react-hot-toast'
 
+/** Maps each role to its landing page after login. */
+function getRedirectPath(role: Role): string {
+  switch (role) {
+    case 'ADMIN':          return '/'
+    case 'ADMIN_BRANCHES': return '/branches'
+    case 'RECEPTION':      return '/invoice/create'
+    case 'CALL_CENTER':    return '/call-center'
+    default:               return '/'
+  }
+}
+
 export default function Login() {
-  const navigate  = useNavigate()
+  const navigate      = useNavigate()
   const { setSession } = useAuth()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -14,8 +26,14 @@ export default function Login() {
   const { mutate, isPending } = useMutation({
     mutationFn: login,
     onSuccess: (data) => {
+      // Only allow roles that have a frontend portal
+      const allowed: Role[] = ['ADMIN', 'ADMIN_BRANCHES', 'RECEPTION', 'CALL_CENTER']
+      if (!allowed.includes(data.role as Role)) {
+        toast.error('Access denied. This portal is not available for your role.')
+        return
+      }
       setSession(data)
-      navigate('/', { replace: true })
+      navigate(getRedirectPath(data.role as Role), { replace: true })
     },
     onError: () => toast.error('Invalid username or password'),
   })
@@ -30,7 +48,7 @@ export default function Login() {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-8">
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">⚡</div>
-          <h1 className="text-2xl font-bold text-gray-900">POS Admin</h1>
+          <h1 className="text-2xl font-bold text-gray-900">POS Portal</h1>
           <p className="text-sm text-gray-500 mt-1">Sign in to continue</p>
         </div>
 
@@ -40,7 +58,7 @@ export default function Login() {
             <input
               className="input"
               type="text"
-              placeholder="admin"
+              placeholder="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoFocus

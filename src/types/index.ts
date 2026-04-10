@@ -1,7 +1,60 @@
 // ── Auth ─────────────────────────────────────────────────────────────────────
 export interface LoginRequest  { username: string; password: string }
-export interface LoginResponse { token: string; username: string; role: Role }
-export type Role = 'ADMIN' | 'CASHIER'
+export interface LoginResponse {
+  token: string
+  username: string
+  role: Role
+  fullName: string | null
+  userId: number
+  branchId: number | null
+}
+export type Role = 'ADMIN' | 'CASHIER' | 'ADMIN_BRANCHES' | 'RECEPTION' | 'CALL_CENTER'
+
+// ── Branches ──────────────────────────────────────────────────────────────────
+export interface Branch {
+  id: number
+  branchName: string
+  mobile: string | null
+  receiptWidthMm: number
+  receiptHeightMm: number | null   // null = auto height
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BranchRequest {
+  branchName: string
+  mobile?: string
+  receiptWidthMm?: number
+  receiptHeightMm?: number | null
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+export interface AppUser {
+  id: number
+  username: string
+  fullName: string | null
+  role: Role
+  active: boolean
+  branchId: number | null
+  branchName: string | null
+  createdAt: string
+}
+
+export interface CreateUserRequest {
+  username: string
+  password: string
+  fullName?: string
+  role: string
+  branchId?: number | null
+}
+
+export interface UpdateUserRequest {
+  fullName?: string
+  password?: string
+  role?: string
+  active?: boolean
+  branchId?: number | null
+}
 
 // ── Category ─────────────────────────────────────────────────────────────────
 export interface Category {
@@ -31,6 +84,8 @@ export interface Item {
   price: number; costPrice: number | null; barcode: string | null
   barcodeType: BarcodeType; imageUrl: string | null; active: boolean
   createdAt: string; updatedAt: string
+  stockQuantity: number | null  // null when not requested
+  inStock: boolean | null       // null when not requested; true if quantity > 0
 }
 
 export interface ItemRequest {
@@ -68,6 +123,72 @@ export interface Sale {
   id: number; cashierUsername: string; totalAmount: number
   status: 'COMPLETED' | 'REFUNDED'; note: string | null
   items: SaleItem[]; createdAt: string
+}
+
+// ── Customer ──────────────────────────────────────────────────────────────────
+export interface Customer {
+  id: number
+  customerName: string
+  customerNumber: string
+}
+
+// ── Invoice ───────────────────────────────────────────────────────────────────
+export type DeviceStatus = 'PENDING' | 'CHECKOUT' | 'FIX' | 'NOT_FIX' | 'CANCELLED'
+
+export interface Invoice {
+  id: number
+  invoiceNumber: string
+  customerId: number | null
+  customerName: string | null
+  customerNumber: string | null
+  branchId: number | null
+  branchName: string | null
+  branchMobile: string | null
+  receiptWidthMm: number
+  receiptHeightMm: number | null
+  deviceType: string | null
+  deviceColor: string | null
+  deviceQuestion: string | null
+  deviceStatus: DeviceStatus | null
+  deviceProblem: string | null
+  deviceImei: string | null
+  deviceNote: string | null
+  deviceAccessories: string | null
+  devicePrice: number | null
+  hiddenPrice: number | null
+  feedbackCallcenter: string | null
+  entryDate: string | null
+  entryTime: string | null
+  finishMainDate: string | null
+  finishMainTime: string | null
+  billDate: string | null
+  billTime: string | null
+  createdByUsername: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface InvoiceRequest {
+  branchId?: number | null
+  customerName?: string
+  customerNumber?: string
+  deviceType?: string
+  deviceColor?: string
+  deviceQuestion?: string
+  deviceStatus?: string
+  deviceProblem?: string
+  deviceImei?: string
+  deviceNote?: string
+  deviceAccessories?: string
+  devicePrice?: number | null
+  hiddenPrice?: number | null
+  feedbackCallcenter?: string
+  entryDate?: string | null
+  entryTime?: string | null
+  finishMainDate?: string | null
+  finishMainTime?: string | null
+  billDate?: string | null
+  billTime?: string | null
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────
