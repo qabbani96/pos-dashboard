@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import PrivateRoute         from './components/PrivateRoute'
 import AdminRoute           from './components/AdminRoute'
-import AdminBranchesRoute  from './components/AdminBranchesRoute'
+import AdminBranchesRoute   from './components/AdminBranchesRoute'
+import AdminOrBranchesRoute from './components/AdminOrBranchesRoute'
 import ReceptionRoute      from './components/ReceptionRoute'
+import InventoryRoute      from './components/InventoryRoute'
 import Layout              from './components/Layout'
 import Login               from './pages/Login'
 import Dashboard           from './pages/Dashboard'
@@ -20,6 +22,9 @@ import CreateInvoice       from './pages/CreateInvoice'
 import BranchDevices       from './pages/BranchDevices'
 import CallCenterDashboard from './pages/CallCenterDashboard'
 import DeviceParts         from './pages/DeviceParts'
+import Shops               from './pages/Shops'
+import Transfers           from './pages/Transfers'
+import Returns             from './pages/Returns'
 
 export default function App() {
   return (
@@ -42,12 +47,16 @@ export default function App() {
               <Route path="/reports"    element={<Reports />} />
             </Route>
 
-            {/* ── ADMIN_BRANCHES: branch + user management ────────────────── */}
+            {/* ── ADMIN_BRANCHES: branch + customer management ─────────────── */}
             <Route element={<AdminBranchesRoute />}>
               <Route path="/branches"  element={<Branches />} />
-              <Route path="/users"     element={<Users />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/money"     element={<Money />} />
+            </Route>
+
+            {/* ── ADMIN + ADMIN_BRANCHES: shared user management ───────────── */}
+            <Route element={<AdminOrBranchesRoute />}>
+              <Route path="/users" element={<Users />} />
             </Route>
 
             {/* ── RECEPTION + CALL_CENTER: standalone pages ───────────────── */}
@@ -56,6 +65,13 @@ export default function App() {
               <Route path="/devices"        element={<BranchDevices />} />
               <Route path="/call-center"    element={<CallCenterDashboard />} />
               <Route path="/parts"          element={<DeviceParts />} />
+            </Route>
+
+            {/* ── INVENTORY: warehouse & shop stock management ─────────────── */}
+            <Route element={<InventoryRoute />}>
+              <Route path="/shops"     element={<Shops />} />
+              <Route path="/transfers" element={<Transfers />} />
+              <Route path="/returns"   element={<Returns />} />
             </Route>
 
           </Route>

@@ -8,6 +8,8 @@ interface AuthUser {
   fullName: string | null
   userId: number
   branchId: number | null
+  shopId: number | null
+  shopName: string | null
 }
 
 interface AuthContextValue {
@@ -18,6 +20,8 @@ interface AuthContextValue {
   isAdminBranches: boolean
   isReception: boolean
   isCallCenter: boolean
+  isInventory: boolean
+  isCashier: boolean
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -36,12 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setSession = useCallback((data: LoginResponse) => {
     const authUser: AuthUser = {
-      username: data.username ?? (data as any).username,
-      role: data.role,
-      token: data.token,
-      fullName: data.fullName ?? null,
-      userId: data.userId,
-      branchId: data.branchId ?? null,
+      username:  data.username,
+      role:      data.role,
+      token:     data.token,
+      fullName:  data.fullName ?? null,
+      userId:    data.userId,
+      branchId:  data.branchId ?? null,
+      shopId:    data.shopId ?? null,
+      shopName:  data.shopName ?? null,
     }
     localStorage.setItem('token', data.token)
     localStorage.setItem('user', JSON.stringify(authUser))
@@ -63,6 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdminBranches: user?.role === 'ADMIN_BRANCHES',
       isReception:     user?.role === 'RECEPTION',
       isCallCenter:    user?.role === 'CALL_CENTER',
+      isInventory:     user?.role === 'INVENTORY',
+      isCashier:       user?.role === 'CASHIER',
     }}>
       {children}
     </AuthContext.Provider>

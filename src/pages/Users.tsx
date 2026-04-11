@@ -6,18 +6,28 @@ import toast from 'react-hot-toast'
 import { getUsers, createUser, updateUser, deleteUser,
          activateUser, deactivateUser } from '../api/users'
 import { getBranches } from '../api/branches'
-import type { AppUser, CreateUserRequest, UpdateUserRequest } from '../types'
+import { getShops } from '../api/shops'
+import { useAuth } from '../context/AuthContext'
+import type { AppUser, CreateUserRequest, UpdateUserRequest, Role } from '../types'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const ASSIGNABLE_ROLES = ['RECEPTION', 'CALL_CENTER'] as const
-type AssignableRole = typeof ASSIGNABLE_ROLES[number]
+/** All roles an ADMIN can assign */
+const ALL_ASSIGNABLE_ROLES: Role[] = ['CASHIER', 'INVENTORY', 'RECEPTION', 'CALL_CENTER']
 
-const BRANCH_REQUIRED_ROLES = new Set<string>(['RECEPTION', 'CALL_CENTER'])
+/** Roles available to ADMIN_BRANCHES — CASHIER is excluded */
+const BRANCHES_ASSIGNABLE_ROLES: Role[] = ['INVENTORY', 'RECEPTION', 'CALL_CENTER']
+
+/** Roles that require a branch assignment */
+const BRANCH_REQUIRED_ROLES = new Set<Role>(['RECEPTION', 'CALL_CENTER'])
+
+/** Roles that require a shop assignment */
+const SHOP_REQUIRED_ROLES = new Set<Role>(['CASHIER', 'INVENTORY'])
 
 const roleBadge: Record<string, string> = {
   ADMIN:          'bg-purple-100 text-purple-700',
   CASHIER:        'bg-blue-100 text-blue-700',
+  INVENTORY:      'bg-teal-100 text-teal-700',
   ADMIN_BRANCHES: 'bg-indigo-100 text-indigo-700',
   RECEPTION:      'bg-green-100 text-green-700',
   CALL_CENTER:    'bg-orange-100 text-orange-700',
@@ -29,19 +39,25 @@ interface FormState {
   username: string
   password: string
   fullName: string
-  role: AssignableRole
+  role: Role
   branchId: number | null
-  active: boolean
+  shopId:   number | null
+  active:   boolean
 }
 
 const emptyForm = (): FormState => ({
-  username: '', password: '', fullName: '', role: 'RECEPTION', branchId: null, active: true,
+  username: '', password: '', fullName: '',
+  role: 'CASHIER', branchId: null, shopId: null, active: true,
 })
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function Users() {
   const qc = useQueryClient()
+  const { isAdmin } = useAuth()
+
+  /** Roles this principal is allowed to assign */
+  const ASSIGNABLE_ROLES = isAdmin ? ALL_ASSIGNABLE_ROLES : BRANCHES_ASSIGNABLE_ROLES
 
   const [modalOpen,    setModalOpen]    = useState(false)
   const [editingUser,  setEditingUser]  = useState<AppUser | null>(null)
@@ -58,6 +74,11 @@ export default function Users() {
   const { data: branches = [] } = useQuery({
     queryKey: ['branches'],
     queryFn: getBranches,
+  })
+
+  const { data: shops = [] } = useQuery({
+    queryKey: ['shops'],
+    queryFn: () => getShops(true),   // active shops only
   })
 
   // ── Mutations ──
@@ -103,12 +124,18 @@ export default function Users() {
 
   const openEdit = (u: AppUser) => {
     setEditingUser(u)
+    // Keep the user's current role if it is within this caller's assignable set;
+    // otherwise fall back to the first available role.
+    const role: Role = ASSIGNABLE_ROLES.includes(u.role as Role)
+      ? (u.role as Role)
+      : ASSIGNABLE_ROLES[0]
     setForm({
       username: u.username,
       password: '',
       fullName: u.fullName ?? '',
-      role:     (ASSIGNABLE_ROLES.includes(u.role as AssignableRole) ? u.role : 'RECEPTION') as AssignableRole,
+      role,
       branchId: u.branchId ?? null,
+      shopId:   u.shopId   ?? null,
       active:   u.active,
     })
     setModalOpen(true)
@@ -116,18 +143,35 @@ export default function Users() {
 
   const closeModal = () => { setModalOpen(false); setEditingUser(null) }
 
+  /** When the role changes, clear the fields that don't apply to the new role */
+  const handleRoleChange = (role: Role) => {
+    setForm(f => ({
+      ...f,
+      role,
+      branchId: BRANCH_REQUIRED_ROLES.has(role) ? f.branchId : null,
+      shopId:   SHOP_REQUIRED_ROLES.has(role)   ? f.shopId   : null,
+    }))
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
     if (BRANCH_REQUIRED_ROLES.has(form.role) && !form.branchId) {
       toast.error('Please select a branch for this role')
       return
     }
+    if (SHOP_REQUIRED_ROLES.has(form.role) && !form.shopId) {
+      toast.error('Please select a shop for this role')
+      return
+    }
+
     if (editingUser) {
       const payload: UpdateUserRequest = {
         fullName: form.fullName || undefined,
         role:     form.role,
         active:   form.active,
         branchId: form.branchId,
+        shopId:   form.shopId,
         ...(form.password ? { password: form.password } : {}),
       }
       updateMut.mutate({ id: editingUser.id, payload })
@@ -138,13 +182,15 @@ export default function Users() {
         fullName: form.fullName || undefined,
         role:     form.role,
         branchId: form.branchId,
+        shopId:   form.shopId,
       }
       createMut.mutate(payload)
     }
   }
 
-  const isBusy = createMut.isPending || updateMut.isPending
+  const isBusy      = createMut.isPending || updateMut.isPending
   const needsBranch = BRANCH_REQUIRED_ROLES.has(form.role)
+  const needsShop   = SHOP_REQUIRED_ROLES.has(form.role)
 
   // ── Render ──
 
@@ -155,7 +201,11 @@ export default function Users() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage RECEPTION and CALL_CENTER accounts</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {isAdmin
+              ? 'Manage all staff accounts — cashier, inventory, reception and call centre'
+              : 'Manage branch staff accounts — reception, call centre and inventory'}
+          </p>
         </div>
         <button className="btn-primary flex items-center gap-2" onClick={openCreate}>
           <PlusIcon className="w-4 h-4" /> New User
@@ -173,7 +223,7 @@ export default function Users() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Username</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Full Name</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Role</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Branch</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Branch / Shop</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Created</th>
                 <th className="px-4 py-3" />
@@ -195,7 +245,15 @@ export default function Users() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-500 text-xs">
-                      {u.branchName ?? <span className="text-gray-300">—</span>}
+                      {/* Show shop for CASHIER/INVENTORY, branch for RECEPTION/CALL_CENTER */}
+                      {SHOP_REQUIRED_ROLES.has(u.role as Role)
+                        ? u.shopName
+                          ? <span className="text-teal-600">📦 {u.shopName}</span>
+                          : <span className="text-red-400">No shop assigned</span>
+                        : BRANCH_REQUIRED_ROLES.has(u.role as Role)
+                          ? u.branchName ?? <span className="text-gray-300">—</span>
+                          : <span className="text-gray-300">—</span>
+                      }
                     </td>
                     <td className="px-4 py-3">
                       <button
@@ -263,7 +321,7 @@ export default function Users() {
                   onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
                   disabled={!!editingUser}
                   required={!editingUser}
-                  placeholder="e.g. sara_reception"
+                  placeholder="e.g. cashier_ali"
                 />
               </div>
 
@@ -300,13 +358,42 @@ export default function Users() {
                 <select
                   className="input w-full"
                   value={form.role}
-                  onChange={e => setForm(f => ({ ...f, role: e.target.value as AssignableRole, branchId: null }))}
+                  onChange={e => handleRoleChange(e.target.value as Role)}
                 >
                   {ASSIGNABLE_ROLES.map(r => (
                     <option key={r} value={r}>{r}</option>
                   ))}
                 </select>
+                <p className="text-xs text-gray-400 mt-1">
+                  {needsShop   ? 'This role requires a shop assignment.'   : ''}
+                  {needsBranch ? 'This role requires a branch assignment.' : ''}
+                </p>
               </div>
+
+              {/* Shop — required for CASHIER / INVENTORY */}
+              {needsShop && (
+                <div>
+                  <label className="label">
+                    Shop <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    className="input w-full"
+                    value={form.shopId ?? ''}
+                    onChange={e => setForm(f => ({ ...f, shopId: e.target.value ? Number(e.target.value) : null }))}
+                    required
+                  >
+                    <option value="">Select shop…</option>
+                    {shops.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                  {shops.length === 0 && (
+                    <p className="text-xs text-orange-500 mt-1">
+                      No active shops available. Please create a shop first in the Inventory section.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Branch — required for RECEPTION / CALL_CENTER */}
               {needsBranch && (

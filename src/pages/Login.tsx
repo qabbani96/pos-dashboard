@@ -13,6 +13,7 @@ function getRedirectPath(role: Role): string {
     case 'ADMIN_BRANCHES': return '/branches'
     case 'RECEPTION':      return '/invoice/create'
     case 'CALL_CENTER':    return '/call-center'
+    case 'INVENTORY':      return '/shops'
     default:               return '/'
   }
 }
@@ -27,7 +28,8 @@ export default function Login() {
     mutationFn: login,
     onSuccess: (data) => {
       // Only allow roles that have a frontend portal
-      const allowed: Role[] = ['ADMIN', 'ADMIN_BRANCHES', 'RECEPTION', 'CALL_CENTER']
+      // CASHIER is Android-only — they have no web dashboard
+      const allowed: Role[] = ['ADMIN', 'ADMIN_BRANCHES', 'RECEPTION', 'CALL_CENTER', 'INVENTORY']
       if (!allowed.includes(data.role as Role)) {
         toast.error('Access denied. This portal is not available for your role.')
         return

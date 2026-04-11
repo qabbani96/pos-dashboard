@@ -7,8 +7,10 @@ export interface LoginResponse {
   fullName: string | null
   userId: number
   branchId: number | null
+  shopId: number | null
+  shopName: string | null
 }
-export type Role = 'ADMIN' | 'CASHIER' | 'ADMIN_BRANCHES' | 'RECEPTION' | 'CALL_CENTER'
+export type Role = 'ADMIN' | 'CASHIER' | 'ADMIN_BRANCHES' | 'RECEPTION' | 'CALL_CENTER' | 'INVENTORY'
 
 // ── Branches ──────────────────────────────────────────────────────────────────
 export interface Branch {
@@ -37,6 +39,8 @@ export interface AppUser {
   active: boolean
   branchId: number | null
   branchName: string | null
+  shopId: number | null
+  shopName: string | null
   createdAt: string
 }
 
@@ -46,6 +50,7 @@ export interface CreateUserRequest {
   fullName?: string
   role: string
   branchId?: number | null
+  shopId?: number | null
 }
 
 export interface UpdateUserRequest {
@@ -54,6 +59,7 @@ export interface UpdateUserRequest {
   role?: string
   active?: boolean
   branchId?: number | null
+  shopId?: number | null
 }
 
 // ── Category ─────────────────────────────────────────────────────────────────
@@ -95,7 +101,7 @@ export interface ItemRequest {
 }
 
 // ── Stock ─────────────────────────────────────────────────────────────────────
-export type MovementType = 'IN' | 'OUT' | 'ADJUSTMENT'
+export type MovementType = 'IN' | 'OUT' | 'ADJUSTMENT' | 'TRANSFER_OUT' | 'TRANSFER_IN' | 'RETURN_OUT' | 'RETURN_IN' | 'SALE'
 
 export interface StockRecord {
   stockId: number; itemId: number; itemSku: string; itemName: string
@@ -113,6 +119,87 @@ export interface StockMovement {
 }
 
 export interface StockSummary { totalItems: number; lowStockCount: number }
+
+// ── Shop ─────────────────────────────────────────────────────────────────────
+export interface Shop {
+  id: number
+  name: string
+  branchId: number | null
+  branchName: string | null
+  active: boolean
+  createdAt: string
+}
+
+export interface ShopRequest {
+  name: string
+  branchId?: number | null
+}
+
+// ── Shop Stock ────────────────────────────────────────────────────────────────
+export interface ShopStock {
+  shopId: number
+  shopName: string
+  itemId: number
+  itemSku: string
+  itemName: string
+  quantity: number
+  minQuantity: number
+  low: boolean
+  updatedAt: string
+}
+
+export interface ShopStockAdjustRequest {
+  type: MovementType
+  quantity: number
+  reference?: string
+  note?: string
+}
+
+// ── Stock Transfer ────────────────────────────────────────────────────────────
+export type TransferStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED'
+
+export interface TransferItemLine {
+  itemId: number
+  itemName?: string
+  quantity: number
+}
+
+export interface StockTransferRequest {
+  shopId: number
+  items: TransferItemLine[]
+  note?: string
+}
+
+export interface StockTransfer {
+  id: number
+  shopId: number
+  shopName: string
+  status: TransferStatus
+  note: string | null
+  createdBy: string
+  createdAt: string
+  completedAt: string | null
+  items: TransferItemLine[]
+}
+
+// ── Stock Return ──────────────────────────────────────────────────────────────
+export interface StockReturnRequest {
+  shopId: number
+  items: TransferItemLine[]
+  note?: string
+}
+
+export interface StockReturn {
+  id: number
+  shopId: number
+  shopName: string
+  status: TransferStatus
+  note: string | null
+  createdBy: string
+  createdAt: string
+  completedAt: string | null
+  items: TransferItemLine[]
+}
 
 // ── Sale ─────────────────────────────────────────────────────────────────────
 export interface SaleItem {
